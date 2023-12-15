@@ -5,8 +5,10 @@ import librosa
 import librosa.util as librosa_util
 import numpy as np
 import pandas as pd
+import pickle
 import random
 
+from datetime import datetime
 from pathlib import Path
 
 
@@ -28,8 +30,9 @@ def convert_time_to_seconds(time_str):
         print(f"Error converting time '{time_str}': {e}")
         return np.nan  # Return NaN for errors
 
+DEFAULT_FIXED_LEN = 1.0
 
-def extract_features(y, sr, starts_ends, fixed_length=1.0):
+def extract_features(y, sr, starts_ends, fixed_length=DEFAULT_FIXED_LEN):
     """
     Extracts magnitude spectrogram features from the audio file given annotation start and end times.
 
@@ -73,7 +76,7 @@ def extract_features(y, sr, starts_ends, fixed_length=1.0):
     return np.array(features)
 
 
-def sample_negative_clips(y, sr, breath_starts_ends, num_negative, fixed_length=1.0):
+def sample_negative_clips(y, sr, breath_starts_ends, num_negative, fixed_length=DEFAULT_FIXED_LEN):
     """
     Sample negative (non-breath) clips from an audio file.
 
@@ -199,6 +202,8 @@ all_labels = np.array(all_labels)
 # Below is an example using a simple Random Forest classifier from scikit-learn
 
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 
@@ -208,10 +213,14 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 # Initialize the Random Forest classifier
-clf = RandomForestClassifier(n_estimators=100, random_state=42)
+# clf = RandomForestClassifier(n_estimators=100, random_state=42)
+clf = GaussianProcessClassifier(1.0 * RBF(1.0), random_state=42)
 
 # Train the classifier
 clf.fit(X_train, y_train)
+
+with open(f"model_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pickle", "wb") as f:
+    pickle.dump(clf, f)
 
 # Predict on the test set
 y_pred = clf.predict(X_test)
