@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import random
+import sys
 
 from datetime import datetime
 from pathlib import Path
@@ -89,7 +90,7 @@ from sklearn.metrics import classification_report
 
 # Initialize the Random Forest classifier
 # clf = RandomForestClassifier(n_estimators=100, random_state=42)
-with open("model_20231214_215433.pickle", "rb") as f:
+with open(sys.argv[1], "rb") as f:
     clf = pickle.load(f)
 
 # Predict on the test set
