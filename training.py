@@ -107,6 +107,7 @@ def sample_negative_clips(y, sr, breath_starts_ends, num_negative, fixed_length=
 
     # List to store the features of negative clips
     negative_features = []
+    negative_starts_ends = []
 
     # Sample negative clips
     for _ in range(num_negative):
@@ -133,9 +134,13 @@ def sample_negative_clips(y, sr, breath_starts_ends, num_negative, fixed_length=
                 # Average the spectrogram along the time axis to create a feature vector
                 feature_vector = np.mean(log_S, axis=1)
                 negative_features.append(feature_vector)
+                negative_starts_ends.append((
+                    librosa.samples_to_time(neg_start_sample, sr=sr),
+                    librosa.samples_to_time(neg_end_sample, sr=sr)
+                ))
                 break
 
-    return np.array(negative_features)
+    return np.array(negative_features), np.array(negative_starts_ends)
 
 
 def main():
@@ -182,7 +187,7 @@ def main():
 
         # Extract negative features (non-breaths), at the specified ratio
         num_negative_clips = len(positive_features) * neg_to_pos_ratio
-        negative_features = sample_negative_clips(y, sr, starts_ends, num_negative_clips)
+        negative_features, _ = sample_negative_clips(y, sr, starts_ends, num_negative_clips)
 
         # If there are no valid intervals, continue to the next row
         if positive_features.size == 0 and negative_features.size == 0:

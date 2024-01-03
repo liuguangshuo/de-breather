@@ -33,6 +33,8 @@ wav_files_dir = "/Users/guangshuo/Desktop/dataset/Daniel"
 # Modified dataset creation code
 all_features = []
 all_labels = []
+all_files = []
+all_starts_ends = []
 neg_to_pos_ratio = (
     10  # Ratio of negative (non-breath) examples to positive (breath) examples
 )
@@ -62,7 +64,7 @@ for index, row in annotations_df.iterrows():
 
     # Extract negative features (non-breaths), at the specified ratio
     num_negative_clips = len(positive_features) * neg_to_pos_ratio
-    negative_features = sample_negative_clips(y, sr, starts_ends, num_negative_clips)
+    negative_features, negative_starts_ends = sample_negative_clips(y, sr, starts_ends, num_negative_clips)
 
     # If there are no valid intervals, continue to the next row
     if positive_features.size == 0 and negative_features.size == 0:
@@ -71,13 +73,18 @@ for index, row in annotations_df.iterrows():
     # Add the features and the corresponding labels to the list
     all_features.extend(positive_features)
     all_labels.extend([1] * len(positive_features))
+    all_starts_ends.extend(starts_ends)
 
     all_features.extend(negative_features)
     all_labels.extend([0] * len(negative_features))
+    all_starts_ends.extend(negative_starts_ends)
+
+    all_files.extend([wav_file_path.stem] * (len(positive_features) + len(negative_features)))
 
 # The arrays should already be NumPy arrays, but in case they are lists
 all_features = np.array(all_features)
 all_labels = np.array(all_labels)
+
 
 # At this point, we can use `all_features` and `all_labels` to train a machine learning model
 # Below is an example using a simple Random Forest classifier from scikit-learn
@@ -98,3 +105,8 @@ pred = clf.predict(all_features)
 
 # Print classification report
 print(classification_report(all_labels, pred))
+
+print("file\tstart_end\tlabel\tprediction")
+for i, p in enumerate(pred):
+    if p != all_labels[i]:
+        print(f"{all_files[i]}\t{all_starts_ends[i][0]:.3f}-{all_starts_ends[i][1]:.3f}\t{all_labels[i]}\t{p}")
