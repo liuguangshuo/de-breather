@@ -32,7 +32,17 @@ def convert_time_to_seconds(time_str):
 
 DEFAULT_FIXED_LEN = 1.0
 
-def extract_features(y, sr, starts_ends, fixed_length=DEFAULT_FIXED_LEN):
+def mfcc_features(y, sr, n_mfcc=13, n_fft=2048, hop_length=512):
+    mfcc_features = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc, n_fft=n_fft, hop_length=hop_length)
+
+    # Average the spectrogram along the time axis to create a feature vector
+    # This reduces the time dimension, creating a consistent feature vector length
+    feature_vector = np.mean(mfcc_features, axis=1)
+
+    return feature_vector
+
+
+def extract_features(y, sr, starts_ends, fixed_length=DEFAULT_FIXED_LEN, n_mfcc=13, n_fft=2048, hop_length=512):
     """
     Extracts magnitude spectrogram features from the audio file given annotation start and end times.
 
@@ -44,6 +54,7 @@ def extract_features(y, sr, starts_ends, fixed_length=DEFAULT_FIXED_LEN):
     Returns:
     Numpy array of extracted features.
     """
+
     features = []
     # Loop through annotated intervals to extract features
     for start, end in starts_ends:
@@ -62,16 +73,13 @@ def extract_features(y, sr, starts_ends, fixed_length=DEFAULT_FIXED_LEN):
         )
 
         # Compute the magnitude spectrogram
-        S = np.abs(librosa.stft(y_segment))
+        # S = np.abs(librosa.stft(y_segment))
 
         # Compute log-amplitude spectrogram
-        log_S = librosa.amplitude_to_db(S, ref=np.max)
+        # log_S = librosa.amplitude_to_db(S, ref=np.max)
 
-        # Average the spectrogram along the time axis to create a feature vector
-        # This reduces the time dimension, creating a consistent feature vector length
-        feature_vector = np.mean(log_S, axis=1)
-
-        features.append(feature_vector)
+        mfcc_vector = mfcc_features(y_segment, sr)
+        features.append(mfcc_vector)
 
     return np.array(features)
 
@@ -128,11 +136,12 @@ def sample_negative_clips(y, sr, breath_starts_ends, num_negative, fixed_length=
             if not overlap_with_breath:
                 y_segment = y[neg_start_sample:neg_end_sample]
                 # Compute the magnitude spectrogram
-                S = np.abs(librosa.stft(y_segment))
+                # S = np.abs(librosa.stft(y_segment))
                 # Compute log-amplitude spectrogram
-                log_S = librosa.amplitude_to_db(S, ref=np.max)
+                # log_S = librosa.amplitude_to_db(S, ref=np.max)
                 # Average the spectrogram along the time axis to create a feature vector
-                feature_vector = np.mean(log_S, axis=1)
+                # feature_vector = np.mean(log_S, axis=1)
+                feature_vector = mfcc_features(y_segment, sr)
                 negative_features.append(feature_vector)
                 negative_starts_ends.append((
                     librosa.samples_to_time(neg_start_sample, sr=sr),
@@ -145,7 +154,7 @@ def sample_negative_clips(y, sr, breath_starts_ends, num_negative, fixed_length=
 
 def main():
     # Process annotation CSV file and assume it's present in the current working directory
-    annotations_csv = "/Users/guangshuo/Desktop/dataset/Ciel/annotations.csv"
+    annotations_csv = "/Users/guangshuo/Desktop/dataset/Daniel/annotations.csv"
     annotations_df = pd.read_csv(annotations_csv)
 
     # Apply the conversion function to all relevant columns with start and end times
@@ -154,7 +163,7 @@ def main():
         annotations_df[col] = annotations_df[col].apply(convert_time_to_seconds)
 
     # Directory where the WAV files are located
-    wav_files_dir = "/Users/guangshuo/Desktop/dataset/Ciel"
+    wav_files_dir = "/Users/guangshuo/Desktop/dataset/Daniel"
 
     # Modified dataset creation code
     all_features = []
@@ -164,17 +173,21 @@ def main():
     )
 
     for index, row in annotations_df.iterrows():
-        wav_file_path = Path(wav_files_dir) / f"{row['File Name']}.wav"
-        if not wav_file_path.exists():
-            print(wav_file_path)
+        wav_paths = list(Path(wav_files_dir).glob(f"{row['File Name']}*.wav"))
+        if not wav_paths:
+            print(row["File Name"])
             continue
+        wav_file_path = wav_paths[0]
 
         # Load the audio file
         y, sr = librosa.load(wav_file_path, sr=None)
 
+        # Normalize the audio samples
+        # y = (y - np.mean(y)) / np.std(y)
+
         # Create a list of start and end times of annotated breaths for this file
         starts_ends = [
-            (row[f"Breath {i} Start"], row[f"Breath {i} End"]) for i in range(1, 9)
+            (row[f"Breath {i} Start"], row[f"Breath {i} End"]) for i in range(1, 50)
         ]
 
         # Clean up NaN values
@@ -209,7 +222,7 @@ def main():
 
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.gaussian_process import GaussianProcessClassifier
-    from sklearn.gaussian_process.kernels import RBF
+    from sklearn.gaussian_process.kernels import RBF, DotProduct
     from sklearn.model_selection import train_test_split
     from sklearn.metrics import classification_report
 
@@ -220,7 +233,9 @@ def main():
 
     # Initialize the Random Forest classifier
     # clf = RandomForestClassifier(n_estimators=100, random_state=42)
-    clf = GaussianProcessClassifier(1.0 * RBF(1.0), random_state=42)
+    kernel = 1.0 * RBF(1.0)
+    # kernel = 1.0 * DotProduct(sigma_0=1.0) ** 2
+    clf = GaussianProcessClassifier(kernel, random_state=42)
 
     # Train the classifier
     clf.fit(X_train, y_train)

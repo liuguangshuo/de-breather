@@ -19,7 +19,7 @@ from training import (
 )
 
 # Process annotation CSV file and assume it's present in the current working directory
-annotations_csv = "/Users/guangshuo/Desktop/dataset/Daniel/annotations.csv"
+annotations_csv = "/Users/guangshuo/Desktop/dataset/Ciel/annotations.csv"
 annotations_df = pd.read_csv(annotations_csv)
 
 # Apply the conversion function to all relevant columns with start and end times
@@ -28,7 +28,7 @@ for col in time_columns:
     annotations_df[col] = annotations_df[col].apply(convert_time_to_seconds)
 
 # Directory where the WAV files are located
-wav_files_dir = "/Users/guangshuo/Desktop/dataset/Daniel"
+wav_files_dir = "/Users/guangshuo/Desktop/dataset/Ciel"
 
 # Modified dataset creation code
 all_features = []
@@ -48,6 +48,9 @@ for index, row in annotations_df.iterrows():
 
     # Load the audio file
     y, sr = librosa.load(wav_file_path, sr=None)
+
+    # Normalize the audio samples
+    # y = (y - np.mean(y)) / np.std(y)
 
     # Create a list of start and end times of annotated breaths for this file
     starts_ends = [
