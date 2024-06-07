@@ -154,8 +154,11 @@ def sample_negative_clips(y, sr, breath_starts_ends, num_negative, fixed_length=
 
 def main():
     # Process annotation CSV file and assume it's present in the current working directory
-    annotations_csv = "/Users/guangshuo/Desktop/dataset/Daniel/annotations.csv"
-    annotations_df = pd.read_csv(annotations_csv)
+    annotations_1_csv = "/Users/guangshuo/Desktop/dataset/Ciel/annotations.csv"
+    annotations_2_csv = "/Users/guangshuo/Desktop/dataset/Ciel/annotations_2.csv"
+    df_1 = pd.read_csv(annotations_1_csv)
+    df_2 = pd.read_csv(annotations_2_csv)
+    annotations_df = pd.concat([df_1, df_2], axis=0, ignore_index=True)
 
     # Apply the conversion function to all relevant columns with start and end times
     time_columns = annotations_df.columns[annotations_df.columns.str.contains("Start|End")]
@@ -163,7 +166,7 @@ def main():
         annotations_df[col] = annotations_df[col].apply(convert_time_to_seconds)
 
     # Directory where the WAV files are located
-    wav_files_dir = "/Users/guangshuo/Desktop/dataset/Daniel"
+    wav_files_dir = "/Users/guangshuo/Desktop/dataset/Ciel"
 
     # Modified dataset creation code
     all_features = []
@@ -187,7 +190,7 @@ def main():
 
         # Create a list of start and end times of annotated breaths for this file
         starts_ends = [
-            (row[f"Breath {i} Start"], row[f"Breath {i} End"]) for i in range(1, 50)
+            (row[f"Breath {i} Start"], row[f"Breath {i} End"]) for i in range(1, 31)
         ]
 
         # Clean up NaN values
